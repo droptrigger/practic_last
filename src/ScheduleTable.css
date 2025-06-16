@@ -1,0 +1,41 @@
+/* Стили для TimePicker */
+.time-picker {
+  width: 100%;
+  font-size: 0.9em;
+}
+
+.time-picker input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.time-picker button {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.time-picker button:hover {
+  background: #e5e5e5;
+}
+
+/* Стили для выпадающего календаря */
+.react-time-picker__clock {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.react-time-picker__clock-button {
+  color: #666;
+}
+
+.react-time-picker__clock-button:hover {
+  color: #333;
+} 

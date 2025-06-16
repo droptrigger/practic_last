@@ -1,0 +1,128 @@
+.select {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.85em;
+  padding: 4px 2px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.select:hover {
+  background: #f2f2f2;
+}
+
+.select-error {
+  background: #ffb3b3 !important;
+  border-radius: 6px;
+}
+
+.schedule-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 100%;
+}
+
+.schedule-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  padding: 0;
+  margin: 0;
+}
+
+.lesson-number {
+  font-weight: bold;
+  text-align: center;
+  width: 40px;
+}
+
+.group-cell {
+  width: 180px;
+  height: 70px;
+  vertical-align: top;
+}
+
+.cell-content {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.subject-section {
+  flex: 2;
+}
+
+.room-section {
+  flex: 1;
+}
+
+.select-container {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.toggle-button {
+  margin-left: 4px;
+}
+
+.empty-cell {
+  color: #aaa;
+}
+
+.lessons-count {
+  background: #f9f9f9;
+  text-align: center;
+  border-bottom: 2px solid #ccc;
+}
+
+.lessons-select {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.add-row-button {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.add-row-button button {
+  padding: 8px 24px;
+  border-radius: 8px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.subject-select {
+  font-size: 0.9em;
+  font-weight: 700;
+}
+
+input[type="time"] {
+  margin-left: 8px;
+}
+
+.pdf-button {
+  width: 32%;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 0;
+  font-weight: 600;
+  font-size: 17px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+}
+
+.pdf-button:hover {
+  background: #1565c0;
+} 
