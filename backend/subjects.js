@@ -10,6 +10,19 @@ module.exports = (db) => {
     });
   });
 
+  // Получить предметы по категории группы
+  router.get('/by-category/:categoryId', (req, res) => {
+    db.all(`
+      SELECT s.* 
+      FROM subjects s
+      JOIN category_subject cs ON s.id = cs.subject_id
+      WHERE cs.category_id = ?
+    `, [req.params.categoryId], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    });
+  });
+
   // Получить предмет по id
   router.get('/:id', (req, res) => {
     db.get('SELECT * FROM subjects WHERE id = ?', [req.params.id], (err, row) => {

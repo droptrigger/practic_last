@@ -32,10 +32,6 @@ const createTables = () => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL
   )`);
-  db.run(`CREATE TABLE IF NOT EXISTS times (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    time TEXT NOT NULL
-  )`);
   db.run(`CREATE TABLE IF NOT EXISTS teacher_subject (
     teacher_id INTEGER NOT NULL,
     subject_id INTEGER NOT NULL,
@@ -43,16 +39,29 @@ const createTables = () => {
     FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
   )`);
+  db.run(`CREATE TABLE IF NOT EXISTS group_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    course INTEGER NOT NULL
+  )`);
   db.run(`CREATE TABLE IF NOT EXISTS groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    category_id INTEGER,
+    FOREIGN KEY (category_id) REFERENCES group_categories(id) ON DELETE SET NULL
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS category_subject (
+    category_id INTEGER NOT NULL,
+    subject_id INTEGER NOT NULL,
+    PRIMARY KEY (category_id, subject_id),
+    FOREIGN KEY (category_id) REFERENCES group_categories(id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS schedules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
     shift INTEGER NOT NULL,
     data TEXT NOT NULL,
-    UNIQUE(date, shift)
+    PRIMARY KEY (date, shift)
   )`);
 };
 
@@ -66,14 +75,16 @@ app.get('/', (req, res) => {
 const subjectsRouter = require('./subjects')(db);
 const teachersRouter = require('./teachers')(db);
 const roomsRouter = require('./rooms')(db);
-const timesRouter = require('./times')(db);
 const groupsRouter = require('./groups')(db);
+const groupCategoriesRouter = require('./group-categories')(db);
+const categorySubjectRouter = require('./category-subject')(db);
 
 app.use('/api/subjects', subjectsRouter);
 app.use('/api/teachers', teachersRouter);
 app.use('/api/rooms', roomsRouter);
-app.use('/api/times', timesRouter);
 app.use('/api/groups', groupsRouter);
+app.use('/api/group-categories', groupCategoriesRouter);
+app.use('/api/category-subject', categorySubjectRouter);
 
 // API для связей преподаватель-предмет
 app.get('/api/teacher-subjects/:teacherId', (req, res) => {
