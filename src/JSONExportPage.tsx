@@ -28,18 +28,17 @@ const JSONExportPage: React.FC<JSONExportPageProps> = ({ date }) => {
     }
   }, []);
 
-  const generatePDFByJSON = () => {
+  // Генерация PDF только для одной смены
+  const generatePDFForShift = (shiftKey: '1 смена' | '2 смена') => {
     if (!parsed || !parsed.расписание) return;
+    const shiftData = parsed.расписание[shiftKey] || [];
     const makeTable = (shiftData: any[], shiftName: string) => {
-      // Разбиваем на чанки по 7 групп
       const chunks = [];
       for (let i = 0; i < shiftData.length; i += GROUPS_IN_ROW) {
         chunks.push(shiftData.slice(i, i + GROUPS_IN_ROW));
       }
       return chunks.map((chunk, chunkIdx) => {
-        // Считаем максимальное число пар среди всех групп в чанке
         const maxLessons = Math.max(...chunk.map(cell => cell.пары.length));
-        // Заголовок: пустая ячейка + названия групп
         const headerRow = [
           { text: 'Пара', bold: true, alignment: 'center' },
           ...chunk.map(cell => ({
@@ -48,7 +47,6 @@ const JSONExportPage: React.FC<JSONExportPageProps> = ({ date }) => {
             alignment: 'center'
           }))
         ];
-        // Если групп меньше 7 — дополняем пустыми
         while (headerRow.length < GROUPS_IN_ROW + 1) {
           headerRow.push({ text: '', bold: true, alignment: 'center' });
         }
@@ -65,16 +63,13 @@ const JSONExportPage: React.FC<JSONExportPageProps> = ({ date }) => {
             }
             const pair = cell.пары[lessonIdx];
             let lines = [];
-            // Разделяем кабинеты
             const isNumericOrD = (str: string) => /^[0-9]+$/.test(str) || /^[дД]$/.test(str.trim());
             const cabinets = [pair["кабинет 1"], pair["кабинет 2"]].filter(Boolean);
             const numericRooms = cabinets.filter(isNumericOrD);
             const textRooms = cabinets.filter(r => !isNumericOrD(r));
-            // Формируем строки
             let leftStr = pair.предмет || '';
             if (textRooms.length) leftStr += (leftStr ? ', ' : '') + textRooms.join(', ');
             let rightStr = numericRooms.join(' / ');
-            // Время — первой строкой, если есть
             if (pair["время"]) {
               lines.push({ text: pair["время"], alignment: 'left', style: { margin: [0, 0, 0, 8] } });
             }
@@ -87,7 +82,6 @@ const JSONExportPage: React.FC<JSONExportPageProps> = ({ date }) => {
                 style: { margin: [0, 0, 0, 16] }
               });
             }
-            // Вторая строка: преподаватели (через /)
             let teacherStr = pair["преподаватель 1"] || '';
             if (pair["преподаватель 2"]) {
               teacherStr = teacherStr ? teacherStr + ' / ' + pair["преподаватель 2"] : pair["преподаватель 2"];
@@ -135,10 +129,8 @@ const JSONExportPage: React.FC<JSONExportPageProps> = ({ date }) => {
           ],
           alignment: 'center'
         },
-        ...(makeTable(parsed.расписание['1 смена'] || [], '1 смена')),
-        { text: '\n\n' },
-        { text: '2 СМЕНА', style: 'subheader', alignment: 'center' },
-        ...(makeTable(parsed.расписание['2 смена'] || [], '2 смена'))
+        { text: shiftKey === '1 смена' ? '1 СМЕНА' : '2 СМЕНА', style: 'subheader', alignment: 'center' },
+        ...makeTable(shiftData, shiftKey)
       ],
       styles: {
         mainHeader: {
@@ -160,23 +152,45 @@ const JSONExportPage: React.FC<JSONExportPageProps> = ({ date }) => {
         }
       }
     };
-    pdfMake.createPdf(docDefinition).download(`schedule_json_${parsed.дата || date}.pdf`);
+    pdfMake.createPdf(docDefinition).download(`schedule_json_${shiftKey.replace(' ', '_')}_${parsed.дата || date}.pdf`);
   };
 
   return (
     <div style={{ padding: 32 }}>
       <h2>JSON Экспорт</h2>
       <p>Дата: {date}</p>
-      <button
-        style={{ marginBottom: 24, background: '#43a047', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
-        onClick={generatePDFByJSON}
-        disabled={!parsed}
-      >
-        PDF по JSON
-      </button>
-      <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 8, maxWidth: 900, overflowX: 'auto' }}>
-        {json}
-      </pre>
+      <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ textAlign: 'center' }}>1 смена</h3>
+          <button
+            style={{ marginBottom: 16, background: '#43a047', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
+            onClick={() => generatePDFForShift('1 смена')}
+            disabled={!parsed || !parsed.расписание || !parsed.расписание['1 смена']}
+          >
+            PDF по JSON (1 смена)
+          </button>
+          <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 8, maxWidth: 600, overflowX: 'auto', minHeight: 300 }}>
+            {parsed && parsed.расписание && parsed.расписание['1 смена']
+              ? JSON.stringify(parsed.расписание['1 смена'], null, 2)
+              : 'Нет данных'}
+          </pre>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ textAlign: 'center' }}>2 смена</h3>
+          <button
+            style={{ marginBottom: 16, background: '#43a047', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
+            onClick={() => generatePDFForShift('2 смена')}
+            disabled={!parsed || !parsed.расписание || !parsed.расписание['2 смена']}
+          >
+            PDF по JSON (2 смена)
+          </button>
+          <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 8, maxWidth: 600, overflowX: 'auto', minHeight: 300 }}>
+            {parsed && parsed.расписание && parsed.расписание['2 смена']
+              ? JSON.stringify(parsed.расписание['2 смена'], null, 2)
+              : 'Нет данных'}
+          </pre>
+        </div>
+      </div>
     </div>
   );
 };

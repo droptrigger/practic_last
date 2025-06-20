@@ -3,11 +3,6 @@ import { ScheduleCell } from './types';
 import './styles/ScheduleTable.css';
 import Select from 'react-select';
 import TimePicker from 'react-time-picker';
-// @ts-ignore
-import pdfMake from 'pdfmake/build/pdfmake';
-// @ts-ignore
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
-pdfMake.vfs = (pdfFonts as any).vfs;
 
 const GROUPS_IN_ROW = 7;
 const MIN_LESSONS = 4;
@@ -76,7 +71,7 @@ const emptyCell: ScheduleCell = { subjectId: '', teacherId: '', roomId: '' };
 
 // Для каждого ряда: группы, количество пар, расписание
 interface GroupRow {
-  groups: (string[] | null)[];
+  groups: (string | null)[];
   lessons: number;
   schedule: ScheduleCell[][]; // [lesson][group]
 }
@@ -119,7 +114,11 @@ const GroupRowTable: React.FC<{
     if (!subjectId || subjectTeachers[subjectId]) return;
     const res = await fetch(`http://localhost:4000/api/teachers/by-subject/${subjectId}`);
     const json = await res.json();
-    setSubjectTeachers(prev => ({ ...prev, [subjectId]: json }));
+    const teachersWithStringIds = json.map((teacher: any) => ({
+      ...teacher,
+      id: String(teacher.id)
+    }));
+    setSubjectTeachers(prev => ({ ...prev, [subjectId]: teachersWithStringIds }));
   };
 
   // Загружать предметы для категории группы
@@ -127,7 +126,11 @@ const GroupRowTable: React.FC<{
     if (!categoryId || categorySubjects[categoryId]) return;
     const res = await fetch(`http://localhost:4000/api/subjects/by-category/${categoryId}`);
     const json = await res.json();
-    setCategorySubjects(prev => ({ ...prev, [categoryId]: json }));
+    const subjectsWithStringIds = json.map((subject: any) => ({
+      ...subject,
+      id: String(subject.id)
+    }));
+    setCategorySubjects(prev => ({ ...prev, [categoryId]: subjectsWithStringIds }));
   };
 
   useEffect(() => {
@@ -151,14 +154,8 @@ const GroupRowTable: React.FC<{
   }, [row.schedule]);
 
   // Получить доступные предметы для группы
-  const getAvailableSubjects = (groupId: string | string[] | null) => {
-    let id = '';
-    if (Array.isArray(groupId)) {
-      id = groupId[0] || '';
-    } else {
-      id = groupId || '';
-    }
-    const group = allGroups.find(g => g.id === id);
+  const getAvailableSubjects = (groupId: string) => {
+    const group = allGroups.find(g => g.id === groupId);
     if (!group || !group.category_id) return subjects;
     return categorySubjects[group.category_id] || subjects;
   };
@@ -190,16 +187,16 @@ const GroupRowTable: React.FC<{
       <thead>
         <tr>
           <th style={{ maxWidth: 40 }}></th>
-          {row.groups.map((groupIds, groupIdx) => {
+          {row.groups.map((groupId, groupIdx) => {
             // Получаем все выбранные группы во всех рядах этой смены, кроме текущей ячейки
             const allSelectedGroupsInShift = allGroupRows
               .flatMap((r, rIdx) => r.groups.map((g, gIdx) => ({ g, rIdx, gIdx })))
               .filter(({ g, rIdx, gIdx }) => g && !(rIdx === rowIdx && gIdx === groupIdx))
-              .flatMap(({ g }) => Array.isArray(g) ? g : []);
+              .map(({ g }) => g);
             // Только те группы, которые не выбраны в других ячейках всех рядов, или уже выбраны в этой
             const groupOptions = Array.isArray(allGroups) ? allGroups
               .filter(group => {
-                if (Array.isArray(groupIds) && groupIds.includes(group.id)) return true;
+                if (group.id === groupId) return true;
                 if (allSelectedGroupsInShift.includes(group.id)) return false;
                 if (currentShift === 2 && otherShiftGroups.includes(group.id)) return false;
                 if (currentShift === 1 && otherShiftGroups.includes(group.id)) return false;
@@ -212,17 +209,12 @@ const GroupRowTable: React.FC<{
             return (
               <th key={rowIdx + '-' + groupIdx} style={{ minWidth: COLUMN_WIDTH, width: COLUMN_WIDTH }}>
                 <Select
-                  isMulti
-                  value={groupOptions.filter(opt => Array.isArray(groupIds) && groupIds.includes(opt.value))}
-                  onChange={opts => handleGroupChange(rowIdx, groupIdx, opts ? opts.map(o => o.value) : [], currentShift)}
+                  value={groupOptions.find(opt => opt.value === groupId) || null}
+                  onChange={opt => handleGroupChange(rowIdx, groupIdx, opt ? opt.value : null)}
                   options={groupOptions}
-                  placeholder="Выберите группы"
+                  placeholder="Выберите группу"
                   isClearable
                 />
-                {/* Отображение выбранных групп через / */}
-                <div style={{ fontSize: '0.95em', color: '#1976d2', marginTop: 2 }}>
-                  {Array.isArray(groupIds) && groupIds.length > 0 ? formatGroupNames(groupIds, allGroups) : ''}
-                </div>
               </th>
             );
           })}
@@ -252,9 +244,9 @@ const GroupRowTable: React.FC<{
         {Array.from({ length: row.lessons }, (_, lessonIdx) => (
           <tr key={lessonIdx}>
             <td className="lesson-number">{lessonIdx + startLessonNumber}</td>
-            {row.groups.map((groupIds, groupIdx) => (
+            {row.groups.map((groupId, groupIdx) => (
               <td key={rowIdx + '-' + groupIdx + '-' + lessonIdx} className="group-cell">
-                {Array.isArray(groupIds) && groupIds.length > 0 ? (
+                {groupId ? (
                   <div className="cell-content" style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                     <div className="subject-row" style={{width: '100%'}}>
                       <div style={{ width: '100%' }}>
@@ -263,14 +255,14 @@ const GroupRowTable: React.FC<{
                             .map(subject => ({ value: subject.id, label: subject.name }))
                             .find(opt => opt.value === row.schedule[lessonIdx][groupIdx].subjectId) || null}
                           onChange={opt => handleCellChange(rowIdx, lessonIdx, groupIdx, 'subjectId', opt ? opt.value : '')}
-                          options={getAvailableSubjects(groupIds)}
+                          options={getAvailableSubjects(groupId).map(subject => ({ value: subject.id, label: subject.name }))}
                           placeholder="Выберите предмет"
                           isClearable
                           menuPlacement="auto"
                           styles={{ menu: base => ({ ...base, zIndex: 9999 }), container: base => ({ ...base, width: '100%' }) }}
                           classNamePrefix="react-select-subject"
                           onFocus={() => {
-                            const group = allGroups.find(g => g.id === (Array.isArray(groupIds) ? groupIds[0] : groupIds));
+                            const group = allGroups.find(g => g.id === groupId);
                             if (group?.category_id) {
                               fetchCategorySubjects(group.category_id);
                             }
@@ -502,40 +494,6 @@ function syncSchedule(schedule: ScheduleCell[][], lessons: number, groupsCount: 
   );
 }
 
-// Функция для красивого форматирования нескольких групп
-function formatGroupNames(groupIds: string[], allGroups: any[]) {
-  if (groupIds.length === 1) {
-    const g = allGroups.find(gr => gr.id === groupIds[0]);
-    return g ? g.name : groupIds[0];
-  }
-  // Получаем имена групп
-  const names = groupIds.map(id => {
-    const g = allGroups.find(gr => gr.id === id);
-    return g ? g.name : id;
-  });
-  // Ищем общий префикс до последнего '-'
-  const splitNames = names.map(n => n.split('-'));
-  if (splitNames.every(arr => arr.length === splitNames[0].length)) {
-    // Сравниваем части кроме последней
-    const prefixParts = [];
-    for (let i = 0; i < splitNames[0].length - 1; i++) {
-      const part = splitNames[0][i];
-      if (splitNames.every(arr => arr[i] === part)) {
-        prefixParts.push(part);
-      } else {
-        break;
-      }
-    }
-    if (prefixParts.length > 0) {
-      // Собираем номера
-      const numbers = splitNames.map(arr => arr[arr.length - 1]);
-      return prefixParts.join('-') + '-' + numbers.join('/');
-    }
-  }
-  // Если не совпадает — просто через /
-  return names.join('/');
-}
-
 export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber = 1, date }) => {
   const [groupRowsShift1, setGroupRowsShift1] = useState<GroupRow[]>([
     {
@@ -571,13 +529,37 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
   });
 
   useEffect(() => {
-    fetch('http://localhost:4000/api/subjects').then(r => r.json()).then(setSubjects);
-    fetch('http://localhost:4000/api/teachers').then(r => r.json()).then(setTeachers);
-    fetch('http://localhost:4000/api/rooms').then(r => r.json()).then(setRooms);
+    fetch('http://localhost:4000/api/subjects').then(r => r.json()).then((data: any[]) => {
+      const subjectsWithStringIds = data.map((subject: any) => ({
+        ...subject,
+        id: String(subject.id)
+      }));
+      setSubjects(subjectsWithStringIds);
+    });
+    fetch('http://localhost:4000/api/teachers').then(r => r.json()).then((data: any[]) => {
+      const teachersWithStringIds = data.map((teacher: any) => ({
+        ...teacher,
+        id: String(teacher.id)
+      }));
+      setTeachers(teachersWithStringIds);
+    });
+    fetch('http://localhost:4000/api/rooms').then(r => r.json()).then((data: any[]) => {
+      const roomsWithStringIds = data.map((room: any) => ({
+        ...room,
+        id: String(room.id)
+      }));
+      setRooms(roomsWithStringIds);
+    });
     fetch('http://localhost:4000/api/groups').then(r => r.json()).then(data => {
       if (Array.isArray(data)) {
-        setGroups(data);
-        setAllGroups(data);
+        // Преобразуем все ID в строки для корректного сравнения
+        const groupsWithStringIds = data.map(group => ({
+          ...group,
+          id: String(group.id),
+          category_id: group.category_id ? String(group.category_id) : undefined
+        }));
+        setGroups(groupsWithStringIds);
+        setAllGroups(groupsWithStringIds);
       } else {
         setGroups([]);
         setAllGroups([]);
@@ -589,21 +571,28 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
   // Загрузка расписания при изменении даты
   useEffect(() => {
     if (!date) return;
-    // Функция для преобразования старого формата groups
-    const fixGroups = (rows: any[]) => rows.map(row => ({
-      ...row,
-      groups: row.groups.map((g: any) => {
-        if (Array.isArray(g)) return g;
-        if (g) return [g];
-        return [];
-      })
-    }));
+    
     // Загрузка расписания для первой смены
     fetch(`http://localhost:4000/api/schedule?date=${date}&shift=1`)
       .then(r => r.json())
       .then(data => {
         if (data && Array.isArray(data)) {
-          setGroupRowsShift1(fixGroups(data));
+          // Преобразуем ID групп в строки
+          const dataWithStringIds = data.map(row => ({
+            ...row,
+            groups: row.groups.map((groupId: any) => groupId ? String(groupId) : null),
+            schedule: row.schedule.map((lessonArr: any[]) => 
+              lessonArr.map((cell: any) => ({
+                ...cell,
+                subjectId: cell.subjectId ? String(cell.subjectId) : '',
+                teacherId: cell.teacherId ? String(cell.teacherId) : '',
+                teacherId2: cell.teacherId2 ? String(cell.teacherId2) : '',
+                roomId: cell.roomId ? String(cell.roomId) : '',
+                roomId2: cell.roomId2 ? String(cell.roomId2) : ''
+              }))
+            )
+          }));
+          setGroupRowsShift1(dataWithStringIds);
         } else {
           setGroupRowsShift1([
             {
@@ -614,12 +603,28 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
           ]);
         }
       });
+
     // Загрузка расписания для второй смены
     fetch(`http://localhost:4000/api/schedule?date=${date}&shift=2`)
       .then(r => r.json())
       .then(data => {
         if (data && Array.isArray(data)) {
-          setGroupRowsShift2(fixGroups(data));
+          // Преобразуем ID групп в строки
+          const dataWithStringIds = data.map(row => ({
+            ...row,
+            groups: row.groups.map((groupId: any) => groupId ? String(groupId) : null),
+            schedule: row.schedule.map((lessonArr: any[]) => 
+              lessonArr.map((cell: any) => ({
+                ...cell,
+                subjectId: cell.subjectId ? String(cell.subjectId) : '',
+                teacherId: cell.teacherId ? String(cell.teacherId) : '',
+                teacherId2: cell.teacherId2 ? String(cell.teacherId2) : '',
+                roomId: cell.roomId ? String(cell.roomId) : '',
+                roomId2: cell.roomId2 ? String(cell.roomId2) : ''
+              }))
+            )
+          }));
+          setGroupRowsShift2(dataWithStringIds);
         } else {
           setGroupRowsShift2([
             {
@@ -645,14 +650,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
   };
 
   // Обработчик выбора группы
-  const handleGroupChange = (rowIdx: number, groupIdx: number, groupIds: string[], shift: number) => {
+  const handleGroupChange = (rowIdx: number, groupIdx: number, groupId: string | null, shift: number) => {
     const setGroupRows = shift === 1 ? setGroupRowsShift1 : setGroupRowsShift2;
     const groupRows = shift === 1 ? groupRowsShift1 : groupRowsShift2;
     
     setGroupRows(prev => prev.map((row, rIdx) => {
       if (rIdx !== rowIdx) return row;
       const updatedGroups = [...row.groups];
-      updatedGroups[groupIdx] = groupIds;
+      updatedGroups[groupIdx] = groupId;
       const newSchedule = syncSchedule(row.schedule, row.lessons, GROUPS_IN_ROW);
       return { ...row, groups: updatedGroups, schedule: newSchedule };
     }));
@@ -697,7 +702,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
       for (let currentLessonIdx = 0; currentLessonIdx < row.schedule.length; currentLessonIdx++) {
         for (let idx = 0; idx < row.schedule[currentLessonIdx].length; idx++) {
           if (!row.groups[idx]) continue; // Пропускаем пустые ячейки групп
-          
           const cell = row.schedule[currentLessonIdx][idx];
           const cellLessonNumber = currentLessonIdx + (isCurrentShift ? startLessonNumber : 5); // Для второй смены начинаем с 5 пары
           const cellTimeRange = getLessonTimeRange(
@@ -705,15 +709,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
             cellLessonNumber,
             bellTimes
           );
-          
           // Проверяем конфликт только если это не та же самая ячейка
           if (!(row === groupRows[_rowIdx] && currentLessonIdx === lessonIdx && idx === groupIdx)) {
-            if (cell[field] === currentResourceId && isTimeRangesOverlap(currentTimeRange, cellTimeRange)) return true;
-            if (field === 'roomId' && cell.roomId2 === currentResourceId && isTimeRangesOverlap(currentTimeRange, cellTimeRange)) return true;
-            if (field === 'teacherId' && cell.teacherId2 === currentResourceId && isTimeRangesOverlap(currentTimeRange, cellTimeRange)) return true;
+            // Для преподавателей и кабинетов сравниваем оба поля
+            if ((cell.teacherId === currentResourceId || cell.teacherId2 === currentResourceId) && (field === 'teacherId' || field === 'teacherId2') && isTimeRangesOverlap(currentTimeRange, cellTimeRange)) return true;
+            if ((cell.roomId === currentResourceId || cell.roomId2 === currentResourceId) && (field === 'roomId' || field === 'roomId2') && isTimeRangesOverlap(currentTimeRange, cellTimeRange)) return true;
           }
         }
       }
+    }
+    // Проверка на совпадение в одной ячейке (teacherId === teacherId2 или roomId === roomId2)
+    if (groupRows[_rowIdx] && groupRows[_rowIdx].schedule[lessonIdx] && groupRows[_rowIdx].schedule[lessonIdx][groupIdx]) {
+      const cell = groupRows[_rowIdx].schedule[lessonIdx][groupIdx];
+      if ((field === 'teacherId' || field === 'teacherId2') && cell.teacherId && cell.teacherId2 && cell.teacherId === cell.teacherId2) return true;
+      if ((field === 'roomId' || field === 'roomId2') && cell.roomId && cell.roomId2 && cell.roomId === cell.roomId2) return true;
     }
     return false;
   };
@@ -817,48 +826,78 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
     setDupLoading(false);
     setShowDuplicate(false);
     if (data && Array.isArray(data)) {
+      // Проверка: есть ли заполненные ячейки в текущем расписании выбранной смены
+      const currentRows = dupShift === 1 ? groupRowsShift1 : groupRowsShift2;
+      const hasFilled = currentRows.some(row =>
+        row.groups.some(g => g) ||
+        row.schedule.some(lessonArr => lessonArr.some(cell => cell.subjectId || cell.teacherId || cell.roomId || cell.teacherId2 || cell.roomId2 || cell.time))
+      );
+      if (hasFilled) {
+        const confirmed = window.confirm('В текущем расписании уже есть данные. Заменить их новым расписанием?');
+        if (!confirmed) return;
+      }
+      // Преобразуем данные, как при загрузке расписания
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const dataWithStringIds = data.map((row: any) => ({
+        ...row,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        groups: (row.groups as (string | number | null)[]).map((groupId: any) => groupId ? String(groupId) : null),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        schedule: (row.schedule as any[][]).map((lessonArr: any[]) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          lessonArr.map((cell: any) => ({
+            ...cell,
+            subjectId: cell.subjectId ? String(cell.subjectId) : '',
+            teacherId: cell.teacherId ? String(cell.teacherId) : '',
+            teacherId2: cell.teacherId2 ? String(cell.teacherId2) : '',
+            roomId: cell.roomId ? String(cell.roomId) : '',
+            roomId2: cell.roomId2 ? String(cell.roomId2) : ''
+          }))
+        )
+      }));
       if (dupShift === 1) {
-        setGroupRowsShift1(data);
+        setGroupRowsShift1(dataWithStringIds);
       } else {
-        setGroupRowsShift2(data);
+        setGroupRowsShift2(dataWithStringIds);
       }
     } else {
       alert('Расписание не найдено!');
     }
   };
 
-  // Экспорт расписания в JSON и переход на страницу
-  const handleExportJSON = () => {
+  // Экспорт расписания и переход на страницу
+  const handleExport = () => {
+    // Проверка загрузки справочников
     if (!subjects.length || !teachers.length || !rooms.length || !allGroups.length) {
       alert('Данные справочников ещё загружаются. Пожалуйста, подождите.');
       return;
     }
-    const getGroupName = (id: string | string[] | null) => {
-      if (Array.isArray(id)) {
-        return formatGroupNames(id, allGroups);
-      } else {
-        const found = allGroups.find((g: any) => g.id === id);
-        return found ? found.name : id || '';
-      }
+
+    // Вспомогательные функции для получения названий
+    const getGroupName = (id: string | null) => {
+      const found = allGroups.find(g => g.id === id);
+      return found ? found.name : id || '';
     };
     const getSubjectName = (id: string) => {
-      const found = subjects.find((s: any) => s.id === id);
+      const found = subjects.find(s => s.id === id);
       return found ? found.name : id || '';
     };
     const getTeacherName = (id: string) => {
-      const teacherFound = teachers.find((t: any) => String(t.id) === String(id));
+      const teacherFound = teachers.find(t => t.id === id);
       if (!teacherFound) {
-        console.warn('Teacher not found for id:', id, 'All teacher ids:', teachers.map((t: any) => t.id));
+        console.warn('Teacher not found for id:', id, 'All teacher ids:', teachers.map(t => t.id));
       }
       return teacherFound ? teacherFound.name : '(не найдено)';
     };
     const getRoomName = (id: string) => {
-      const roomFound = rooms.find((r: any) => String(r.id) === String(id));
+      const roomFound = rooms.find(r => r.id === id);
       if (!roomFound) {
-        console.warn('Room not found for id:', id, 'All room ids:', rooms.map((r: any) => r.id));
+        console.warn('Room not found for id:', id, 'All room ids:', rooms.map(r => r.id));
       }
       return roomFound ? (roomFound.name || roomFound.number || '(не найдено)') : '(не найдено)';
     };
+
+    // Формируем ячейки для смены
     const formatShift = (groupRows: GroupRow[]) => {
       const cells = [];
       let cellId = 1;
@@ -866,7 +905,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
         const row = groupRows[rowIdx];
         for (let groupIdx = 0; groupIdx < row.groups.length; groupIdx++) {
           const groupId = row.groups[groupIdx];
-          if (!groupId || (Array.isArray(groupId) && groupId.length === 0)) continue;
+          if (!groupId) continue;
           const groupNames = [getGroupName(groupId)];
           const pairs = row.schedule.map((lessonCells: ScheduleCell[], lessonIdx) => {
             const cell = lessonCells[groupIdx];
@@ -890,6 +929,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
       }
       return cells;
     };
+
     const exportData = {
       расписание: {
         '1 смена': formatShift(groupRowsShift1),
@@ -897,6 +937,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
       },
       дата: date
     };
+
     localStorage.setItem('scheduleExportJSON', JSON.stringify(exportData, null, 2));
     window.location.href = '/json-export';
   };
@@ -907,74 +948,72 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
     // Получаем все группы из другой смены
     const otherShiftGroups = (shift === 1 ? groupRowsShift2 : groupRowsShift1)
       .flatMap(row => row.groups)
-      .filter(Boolean)
-      .flatMap(g => Array.isArray(g) ? g : (g ? [g] : []));
+      .filter(Boolean) as string[];
 
     // Определяем параметры для каждой смены
     const shiftParams = shift === 1 
       ? { startLesson: startLessonNumber, maxLessons: 6 }
       : { startLesson: 5, maxLessons: 9 };
 
-  return (
+    return (
       <div>
         <h2 style={{ margin: '20px 0', color: '#1976d2' }}>{shift} СМЕНА</h2>
-      {groupRows.map((row, rowIdx) => {
-        const allSelectedGroups = groupRows
-          .flatMap((r, idx) => idx !== rowIdx ? r.groups.filter(Boolean) : [])
-          .flatMap(g => Array.isArray(g) ? g : (g ? [g] : []));
-        return (
-          <div key={rowIdx} style={{position: 'relative'}}>
-            <GroupRowTable
-              row={row}
-              rowIdx={rowIdx}
-              hovered={hovered}
-              setHovered={setHovered}
-                handleGroupChange={(r: number, g: number, v: string[], shift: number) => handleGroupChange(r, g, v, shift)}
+        {groupRows.map((row, rowIdx) => {
+          const allSelectedGroups = groupRows
+            .flatMap((r, idx) => idx !== rowIdx ? r.groups.filter(Boolean) : []) as string[];
+          return (
+            <div key={rowIdx} style={{position: 'relative'}}>
+              <GroupRowTable
+                row={row}
+                rowIdx={rowIdx}
+                hovered={hovered}
+                setHovered={setHovered}
+                handleGroupChange={(r: number, g: number, v: string | null) => handleGroupChange(r, g, v, shift)}
                 handleLessonsChange={(r: number, v: number) => handleLessonsChange(r, v, shift)}
                 handleCellChange={(r: number, l: number, g: number, f: keyof ScheduleCell, v: string) => handleCellChange(r, l, g, f, v, shift)}
                 isTeacherConflict={(r: number, l: number, g: number, f: 'teacherId' | 'teacherId2') => isTeacherConflict(r, l, g, f, shift)}
                 isRoomConflict={(r: number, l: number, g: number, f: 'roomId' | 'roomId2') => isRoomConflict(r, l, g, f, shift)}
-              allSelectedGroups={allSelectedGroups}
+                allSelectedGroups={allSelectedGroups}
                 startLessonNumber={shiftParams.startLesson}
-              subjects={subjects}
-              teachers={teachers}
-              rooms={rooms}
-              groups={groups}
-              allGroupRows={groupRows}
-              allGroups={allGroups}
-              times={times}
+                subjects={subjects}
+                teachers={teachers}
+                rooms={rooms}
+                groups={groups}
+                allGroupRows={groupRows}
+                allGroups={allGroups}
+                times={times}
                 currentShift={shift}
                 otherShiftGroups={otherShiftGroups}
-            />
-            {groupRows.length > 1 && (
-              <button
-                style={{position: 'absolute', top: 80, right: 8, zIndex: 2, background: '#fff', color: '#d32f2f', border: '1px solid #d32f2f', borderRadius: 6, padding: '2px 10px', fontSize: '0.95em', cursor: 'pointer'}}
+              />
+              {groupRows.length > 1 && (
+                <button
+                  style={{position: 'absolute', top: 60, right: 8, zIndex: 2, background: '#fff', color: '#d32f2f', border: '1px solid #d32f2f', borderRadius: 6, padding: '2px 10px', fontSize: '0.95em', cursor: 'pointer'}}
                   onClick={() => handleRemoveRow(rowIdx, shift)}
-                title="Удалить ряд"
-              >
-                Удалить ряд
-              </button>
-            )}
-          </div>
-        );
-      })}
-      <div className="add-row-button">
-        <button
-          style={{width: '95%'}}
-          onClick={() => {
-            setGroupRows(prev => [
-              ...prev,
-              {
-                groups: Array(GROUPS_IN_ROW).fill(null),
-                lessons: 5,
-                schedule: Array.from({ length: MIN_LESSONS }, () => Array(GROUPS_IN_ROW).fill(null).map(() => ({ ...emptyCell })))
-              }
-            ]);
-          }}
-        >
-          Добавить ряд
-        </button>
-      </div>
+                  title="Удалить ряд"
+                >
+                  Удалить ряд
+                </button>
+              )}
+            </div>
+          );
+        })}
+        <div className="add-row-button">
+          <button
+            style={{width: '95%'}}
+            onClick={() => {
+              setGroupRows(prev => [
+                ...prev,
+                {
+                  groups: Array(GROUPS_IN_ROW).fill(null),
+                  lessons: 5,
+                  schedule: Array.from({ length: MIN_LESSONS }, () => Array(GROUPS_IN_ROW).fill(null).map(() => ({ ...emptyCell })))
+                }
+              ]);
+            }}
+          >
+            Добавить ряд
+          </button>
+        </div>
       </div>
     );
   };
@@ -999,7 +1038,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
         </button>
         <button
           style={{width: '32%', background: '#ff9800', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontWeight: 600, fontSize: 17, cursor: 'pointer', boxShadow: '0 2px 8px rgba(255,152,0,0.08)'}}
-          onClick={handleExportJSON}
+          onClick={handleExport}
         >
           Экспорт
         </button>
