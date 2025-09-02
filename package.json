@@ -32,7 +32,10 @@
     "client": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "deploy": "npm run build && cd backend && node index.js",
+    "docker:build": "docker build -t schedule-app .",
+    "docker:run": "docker run -p 4000:4000 schedule-app"
   },
   "eslintConfig": {
     "extends": [

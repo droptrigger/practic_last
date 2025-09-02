@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  schedule-app:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+    volumes:
+      - ./backend/schedule.db:/app/backend/schedule.db
+    restart: unless-stopped

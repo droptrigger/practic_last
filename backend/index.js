@@ -4,10 +4,13 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+// Раздача статических файлов React приложения
+app.use(express.static(path.join(__dirname, '../build')));
 
 // Подключение к базе данных
 const db = new sqlite3.Database(path.join(__dirname, 'schedule.db'), (err) => {
@@ -146,6 +149,11 @@ app.post('/api/schedule', (req, res) => {
       res.json({ success: true });
     }
   );
+});
+
+// Обработка всех остальных маршрутов для React приложения
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../build', 'index.html'));
 });
 
 app.listen(PORT, () => {
