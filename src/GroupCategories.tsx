@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GroupCategory } from './types';
 import './styles/GroupCategories.css';
 import Select from 'react-select';
+import { API } from './config';
 
 export const GroupCategories: React.FC = () => {
   const [categories, setCategories] = useState<GroupCategory[]>([]);
@@ -19,19 +20,19 @@ export const GroupCategories: React.FC = () => {
   }, []);
 
   const fetchCategories = async () => {
-    const response = await fetch('http://localhost:4000/api/group-categories');
+    const response = await fetch(API.categories);
     const data = await response.json();
     setCategories(data);
   };
 
   const fetchSubjects = async () => {
-    const response = await fetch('http://localhost:4000/api/subjects');
+    const response = await fetch(API.subjects);
     const data = await response.json();
     setSubjects(data);
   };
 
   const fetchCategorySubjects = async (categoryId: string) => {
-    const response = await fetch(`http://localhost:4000/api/category-subject/category/${categoryId}`);
+    const response = await fetch(API.categorySubjects(categoryId));
     const data = await response.json();
     return data.map((s: any) => s.id);
   };
@@ -46,7 +47,7 @@ export const GroupCategories: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const response = await fetch('http://localhost:4000/api/group-categories', {
+    const response = await fetch(API.categories, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newCategory),
@@ -55,7 +56,7 @@ export const GroupCategories: React.FC = () => {
     
     if (selectedSubjects.length > 0) {
       for (const subject of selectedSubjects) {
-        await fetch(`http://localhost:4000/api/category-subject`, {
+        await fetch(API.categorySubject, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -75,14 +76,14 @@ export const GroupCategories: React.FC = () => {
     e.preventDefault();
     if (!editingCategory) return;
     
-    await fetch(`http://localhost:4000/api/group-categories/${editingCategory.id}`, {
+    await fetch(`${API.categories}/${editingCategory.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editingCategory),
     });
 
     if (editingSubjects.length > 0) {
-      await fetch(`http://localhost:4000/api/group-categories/${editingCategory.id}/subjects`, {
+      await fetch(`${API.categories}/${editingCategory.id}/subjects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjectIds: editingSubjects.map((s: any) => s.value) }),
@@ -98,7 +99,7 @@ export const GroupCategories: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Удалить категорию?')) return;
     
-    await fetch(`http://localhost:4000/api/group-categories/${id}`, {
+    await fetch(`${API.categories}/${id}`, {
       method: 'DELETE',
     });
     fetchCategories();
@@ -113,7 +114,7 @@ export const GroupCategories: React.FC = () => {
   const saveSubjects = async () => {
     if (!editingCategoryId) return;
     
-    await fetch(`http://localhost:4000/api/group-categories/${editingCategoryId}/subjects`, {
+    await fetch(`${API.categories}/${editingCategoryId}/subjects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subjectIds: editingSubjects.map((s: any) => s.value) }),

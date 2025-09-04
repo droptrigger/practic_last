@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Group, GroupCategory } from './types';
 import './styles/Groups.css';
 import Select from 'react-select';
+import { API } from './config';
 
 export const Groups: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -18,20 +19,20 @@ export const Groups: React.FC = () => {
   }, []);
 
   const fetchGroups = async () => {
-    const response = await fetch('http://localhost:4000/api/groups');
+    const response = await fetch(API.groups);
     const data = await response.json();
     setGroups(data);
   };
 
   const fetchCategories = async () => {
-    const response = await fetch('http://localhost:4000/api/group-categories');
+    const response = await fetch(API.categories);
     const data = await response.json();
     setCategories(data);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('http://localhost:4000/api/groups', {
+    await fetch(API.groups, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...newGroup, category_id: selectedCategory ? selectedCategory.value : '' }),
@@ -44,7 +45,7 @@ export const Groups: React.FC = () => {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingGroup) return;
-    await fetch(`http://localhost:4000/api/groups/${editingGroup.id}`, {
+    await fetch(`${API.groups}/${editingGroup.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...editingGroup, category_id: editingCategory ? editingCategory.value : '' }),
@@ -56,7 +57,7 @@ export const Groups: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Удалить группу?')) return;
-    await fetch(`http://localhost:4000/api/groups/${id}`, {
+    await fetch(`${API.groups}/${id}`, {
       method: 'DELETE',
     });
     fetchGroups();

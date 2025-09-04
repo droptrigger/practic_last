@@ -2,14 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { GroupCategories } from './GroupCategories';
 import Groups from './Groups';
 import Select, { MultiValue } from 'react-select';
-
-const API = {
-  subjects: 'http://localhost:4000/api/subjects',
-  teachers: 'http://localhost:4000/api/teachers',
-  rooms: 'http://localhost:4000/api/rooms',
-  groups: 'http://localhost:4000/api/groups',
-  categories: 'http://localhost:4000/api/group-categories',
-};
+import { API } from './config';
 
 type DirectoryType = 'subjects' | 'teachers' | 'rooms' | 'groups' | 'categories';
 
@@ -50,7 +43,7 @@ const DirectoryManagerPage: React.FC = () => {
       // Получить связи преподаватель-предмет
       const allSubjects: Record<number, string[]> = {};
       await Promise.all(json.map(async (t: any) => {
-        const res2 = await fetch(`http://localhost:4000/api/teacher-subjects/${t.id}`);
+        const res2 = await fetch(API.teacherSubjects(t.id));
         const subjIds = await res2.json();
         allSubjects[t.id] = subjIds;
       }));
@@ -74,7 +67,7 @@ const DirectoryManagerPage: React.FC = () => {
       });
       const teacher = await res.json();
       // Затем сохраняем связи с предметами
-      await fetch(`http://localhost:4000/api/teacher-subjects/${teacher.id || teacher.insertId || teacher.lastID}`, {
+      await fetch(API.teacherSubjects(teacher.id || teacher.insertId || teacher.lastID), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjectIds: selectedSubjects.map(s => s.value) }),
@@ -109,7 +102,7 @@ const DirectoryManagerPage: React.FC = () => {
 
   const saveEdit = async () => {
     if (editTeacherId == null) return;
-    await fetch(`http://localhost:4000/api/teacher-subjects/${editTeacherId}`, {
+    await fetch(API.teacherSubjects(editTeacherId.toString()), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subjectIds: editSubjects.map(s => s.value) }),
@@ -143,7 +136,7 @@ const DirectoryManagerPage: React.FC = () => {
       body: JSON.stringify({ name: editValue }),
     });
     if (activeTab === 'teachers') {
-      await fetch(`http://localhost:4000/api/teacher-subjects/${editId}`, {
+      await fetch(API.teacherSubjects(editId.toString()), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjectIds: editSubjects.map(s => s.value) }),

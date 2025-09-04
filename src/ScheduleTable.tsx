@@ -3,6 +3,7 @@ import { ScheduleCell } from './types';
 import './styles/ScheduleTable.css';
 import Select from 'react-select';
 import TimePicker from 'react-time-picker';
+import { API } from './config';
 
 const GROUPS_IN_ROW = 7;
 const MIN_LESSONS = 4;
@@ -112,7 +113,7 @@ const GroupRowTable: React.FC<{
   // Загружать преподавателей для выбранного предмета
   const fetchTeachers = async (subjectId: string) => {
     if (!subjectId || subjectTeachers[subjectId]) return;
-    const res = await fetch(`http://localhost:4000/api/teachers/by-subject/${subjectId}`);
+    const res = await fetch(API.teachersBySubject(subjectId));
     const json = await res.json();
     const teachersWithStringIds = json.map((teacher: any) => ({
       ...teacher,
@@ -124,7 +125,7 @@ const GroupRowTable: React.FC<{
   // Загружать предметы для категории группы
   const fetchCategorySubjects = async (categoryId: string) => {
     if (!categoryId || categorySubjects[categoryId]) return;
-    const res = await fetch(`http://localhost:4000/api/subjects/by-category/${categoryId}`);
+    const res = await fetch(`${API.subjects}/by-category/${categoryId}`);
     const json = await res.json();
     const subjectsWithStringIds = json.map((subject: any) => ({
       ...subject,
@@ -529,28 +530,28 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
   });
 
   useEffect(() => {
-    fetch('http://localhost:4000/api/subjects').then(r => r.json()).then((data: any[]) => {
+    fetch(API.subjects).then(r => r.json()).then((data: any[]) => {
       const subjectsWithStringIds = data.map((subject: any) => ({
         ...subject,
         id: String(subject.id)
       }));
       setSubjects(subjectsWithStringIds);
     });
-    fetch('http://localhost:4000/api/teachers').then(r => r.json()).then((data: any[]) => {
+    fetch(API.teachers).then(r => r.json()).then((data: any[]) => {
       const teachersWithStringIds = data.map((teacher: any) => ({
         ...teacher,
         id: String(teacher.id)
       }));
       setTeachers(teachersWithStringIds);
     });
-    fetch('http://localhost:4000/api/rooms').then(r => r.json()).then((data: any[]) => {
+    fetch(API.rooms).then(r => r.json()).then((data: any[]) => {
       const roomsWithStringIds = data.map((room: any) => ({
         ...room,
         id: String(room.id)
       }));
       setRooms(roomsWithStringIds);
     });
-    fetch('http://localhost:4000/api/groups').then(r => r.json()).then(data => {
+    fetch(API.groups).then(r => r.json()).then(data => {
       if (Array.isArray(data)) {
         // Преобразуем все ID в строки для корректного сравнения
         const groupsWithStringIds = data.map(group => ({
@@ -565,7 +566,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
         setAllGroups([]);
       }
     });
-    fetch('http://localhost:4000/api/times').then(r => r.json()).then(setTimes);
+    fetch(API.times).then(r => r.json()).then(setTimes);
   }, []);
 
   // Загрузка расписания при изменении даты
@@ -573,7 +574,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
     if (!date) return;
     
     // Загрузка расписания для первой смены
-    fetch(`http://localhost:4000/api/schedule?date=${date}&shift=1`)
+    fetch(`${API.schedule}?date=${date}&shift=1`)
       .then(r => r.json())
       .then(data => {
         if (data && Array.isArray(data)) {
@@ -605,7 +606,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
       });
 
     // Загрузка расписания для второй смены
-    fetch(`http://localhost:4000/api/schedule?date=${date}&shift=2`)
+    fetch(`${API.schedule}?date=${date}&shift=2`)
       .then(r => r.json())
       .then(data => {
         if (data && Array.isArray(data)) {
@@ -805,12 +806,12 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
 
   // Сохранение расписания
   const handleSave = async () => {
-    await fetch('http://localhost:4000/api/schedule', {
+    await fetch(API.schedule, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date, shift: 1, data: groupRowsShift1 }),
     });
-    await fetch('http://localhost:4000/api/schedule', {
+    await fetch(API.schedule, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date, shift: 2, data: groupRowsShift2 }),
@@ -821,7 +822,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({ startLessonNumber 
   // Дублирование расписания
   const handleDuplicate = async () => {
     setDupLoading(true);
-    const res = await fetch(`http://localhost:4000/api/schedule?date=${dupDate}&shift=${dupShift}`);
+    const res = await fetch(`${API.schedule}?date=${dupDate}&shift=${dupShift}`);
     const data = await res.json();
     setDupLoading(false);
     setShowDuplicate(false);

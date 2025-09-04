@@ -121,6 +121,14 @@ app.get('/api/teachers/by-subject/:subjectId', (req, res) => {
   });
 });
 
+// API для времени звонков
+app.get('/api/times', (req, res) => {
+  res.json([
+    '08:30', '10:00', '11:50', '13:20', '14:50',
+    '15:00', '15:30', '16:00', '17:30'
+  ]);
+});
+
 // Получить расписание по дате и смене
 app.get('/api/schedule', (req, res) => {
   const { date, shift } = req.query;
