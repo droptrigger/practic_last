@@ -1,0 +1,45 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Фон с геометрическими фигурами -->
+  <rect width="512" height="512" fill="#6a1b9a"/>
+  
+  <!-- Фоновые геометрические фигуры -->
+  <polygon points="0,0 200,0 150,200 0,150" fill="#8e24aa" opacity="0.8"/>
+  <polygon points="512,0 400,0 450,150 512,100" fill="#7b1fa2" opacity="0.7"/>
+  <polygon points="0,512 100,400 200,512" fill="#9c27b0" opacity="0.6"/>
+  <polygon points="512,512 400,512 350,350 512,400" fill="#8e24aa" opacity="0.8"/>
+  
+  <!-- Центральный щит -->
+  <path d="M256 80 L320 120 L320 200 L256 240 L192 200 L192 120 Z" fill="#9c27b0" stroke="white" stroke-width="8"/>
+  
+  <!-- Внутренняя часть щита -->
+  <path d="M256 100 L300 130 L300 190 L256 220 L212 190 L212 130 Z" fill="#7b1fa2"/>
+  
+  <!-- Открытая книга -->
+  <g transform="translate(256, 150)">
+    <!-- Левая страница -->
+    <path d="M-30 -20 L-15 -25 L-15 15 L-30 10 Z" fill="white" opacity="0.9"/>
+    <!-- Правая страница -->
+    <path d="M-15 -25 L0 -20 L0 20 L-15 15 Z" fill="white" opacity="0.9"/>
+    <!-- Переплет книги -->
+    <rect x="-30" y="-25" width="30" height="40" fill="none" stroke="white" stroke-width="2"/>
+    <!-- Линии на страницах -->
+    <line x1="-25" y1="-15" x2="-20" y2="-15" stroke="#7b1fa2" stroke-width="1"/>
+    <line x1="-25" y1="-5" x2="-20" y2="-5" stroke="#7b1fa2" stroke-width="1"/>
+    <line x1="-25" y1="5" x2="-20" y2="5" stroke="#7b1fa2" stroke-width="1"/>
+    <line x1="-10" y1="-15" x2="-5" y2="-15" stroke="#7b1fa2" stroke-width="1"/>
+    <line x1="-10" y1="-5" x2="-5" y2="-5" stroke="#7b1fa2" stroke-width="1"/>
+    <line x1="-10" y1="5" x2="-5" y2="5" stroke="#7b1fa2" stroke-width="1"/>
+  </g>
+  
+  <!-- Год "2024" вместо "1967" -->
+  <text x="256" y="280" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="32" font-weight="bold">2024</text>
+  
+  <!-- Дополнительные элементы расписания -->
+  <g transform="translate(256, 320)">
+    <!-- Маленькие иконки расписания -->
+    <rect x="-40" y="-8" width="16" height="16" rx="2" fill="white" opacity="0.8"/>
+    <rect x="-20" y="-8" width="16" height="16" rx="2" fill="white" opacity="0.8"/>
+    <rect x="0" y="-8" width="16" height="16" rx="2" fill="white" opacity="0.8"/>
+    <rect x="20" y="-8" width="16" height="16" rx="2" fill="white" opacity="0.8"/>
+  </g>
+</svg>
